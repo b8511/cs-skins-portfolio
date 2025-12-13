@@ -21,6 +21,7 @@ python get_item_ids.py
 **Output:**
 - `item_ids.json`: Complete results including nameids and price information
 - Console output: Progress updates and formatted results
+- See `item_ids_example.json` for expected output format
 
 **Requirements:**
 - Python 3.6+

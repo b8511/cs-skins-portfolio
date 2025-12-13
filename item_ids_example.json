@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Dreams & Nightmares Case",
+    "nameid": 176409448,
+    "price_info": {
+      "name": "Dreams & Nightmares Case",
+      "lowest_price": "$0.13",
+      "median_price": "$0.13",
+      "volume": "12,345"
+    }
+  },
+  {
+    "name": "Prisma Case",
+    "nameid": 176083513,
+    "price_info": {
+      "name": "Prisma Case",
+      "lowest_price": "$0.10",
+      "median_price": "$0.10",
+      "volume": "8,765"
+    }
+  }
+]

@@ -25,6 +25,7 @@ respectful to Steam's servers. The full run may take 1-2 minutes.
 """
 
 import json
+import re
 import time
 import urllib.request
 import urllib.parse
@@ -51,7 +52,7 @@ def get_item_id(item_name: str, app_id: int = 730) -> Optional[Dict]:
     try:
         # Add headers to mimic a browser request
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         req = urllib.request.Request(url, headers=headers)
         
@@ -88,7 +89,7 @@ def get_item_nameid(item_name: str, app_id: int = 730) -> Optional[int]:
     
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         req = urllib.request.Request(url, headers=headers)
         
@@ -96,16 +97,14 @@ def get_item_nameid(item_name: str, app_id: int = 730) -> Optional[int]:
             html = response.read().decode('utf-8')
             
             # Search for Market_LoadOrderSpread which contains the nameid
-            search_str = 'Market_LoadOrderSpread( '
-            idx = html.find(search_str)
-            if idx != -1:
-                # Extract the nameid (first parameter)
-                start = idx + len(search_str)
-                end = html.find(' ', start)
-                nameid_str = html[start:end].strip()
+            # Use regex for more robust parsing
+            # Pattern matches: Market_LoadOrderSpread( <number> ) or Market_LoadOrderSpread(<number>)
+            pattern = r'Market_LoadOrderSpread\s*\(\s*(\d+)\s*\)'
+            match = re.search(pattern, html)
+            if match:
                 try:
-                    return int(nameid_str)
-                except ValueError:
+                    return int(match.group(1))
+                except (ValueError, IndexError):
                     pass
     except Exception as e:
         print(f"Error fetching nameid for '{item_name}': {e}")
@@ -153,7 +152,7 @@ def main():
         "Snakebite Case",
         "Spectrum 2 Case",
         "Fever Case",
-        "Gallary Case"
+        "Gallery Case"
     ]
     
     print("Fetching item IDs for CS:GO cases...")
