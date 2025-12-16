@@ -11,31 +11,6 @@ A Next.js application for tracking your Counter-Strike 2 case and package invest
 - 📱 **Responsive Design**: Works on desktop and mobile
 - 🎨 **Modern UI**: Built with Tailwind CSS
 
-## Tech Stack
-
-- **Next.js 16** - React framework with App Router
-- **TypeScript** - Type-safe code
-- **Tailwind CSS** - Utility-first styling
-- **Steam API** - Price data from Steam Community Market
-
-## Prerequisites
-
-- **Node.js >= 20.9.0** (⚠️ your current version is 18.17.1)
-- npm, yarn, pnpm, or bun
-
-## Getting Started
-
-### 1. Upgrade Node.js (Required)
-
-You need to upgrade Node.js to version 20.9.0 or higher:
-
-**Option A: Using nvm (Node Version Manager)**
-
-```powershell
-# Install nvm from: https://github.com/coreybutler/nvm-windows
-nvm install 20
-nvm use 20
-```
 
 **Option B: Direct Download**
 
