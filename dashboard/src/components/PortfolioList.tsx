@@ -1,7 +1,7 @@
 "use client";
 
 import { PortfolioItem } from "@/types";
-import { formatPrice } from "@/lib/steamApi";
+import { formatPrice, getDisplayName } from "@/lib/steamApi";
 
 interface PortfolioListProps {
   portfolio: PortfolioItem[];
@@ -29,13 +29,23 @@ export default function PortfolioList({
     0
   );
 
+  const afterTaxValue = totalValue * 0.85; // 15% Steam tax deduction
+
   return (
     <div className="space-y-4">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white shadow-xl">
+      <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white shadow-xl">
         <h2 className="text-sm uppercase tracking-wide mb-2 opacity-90">
           Total Portfolio Value
         </h2>
         <div className="text-4xl font-bold">{formatPrice(totalValue)}</div>
+        <div className="text-sm mt-3 opacity-90 border-t border-white/20 pt-3">
+          <div className="flex justify-between items-center">
+            <span>After 15% Steam Tax:</span>
+            <span className="text-2xl font-bold">
+              {formatPrice(afterTaxValue)}
+            </span>
+          </div>
+        </div>
         <div className="text-sm mt-2 opacity-90">
           {portfolio.length} unique item{portfolio.length !== 1 ? "s" : ""}
         </div>
@@ -50,7 +60,7 @@ export default function PortfolioList({
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <h3 className="font-semibold text-white text-sm mb-1">
-                  {item.name}
+                  {getDisplayName(item.name)}
                 </h3>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-gray-400">

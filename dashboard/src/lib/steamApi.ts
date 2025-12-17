@@ -39,13 +39,33 @@ export const CSGO_CASES = [
   "Gallery Case",
 ];
 
+export const CSGO_CAPSULES = [
+  "Antwerp 2022 Challengers Sticker Capsule",
+  "Antwerp 2022 Champions Autograph Capsule",
+  "Antwerp 2022 Contenders Autograph Capsule",
+  "Antwerp 2022 Contenders Sticker Capsule",
+  "Antwerp 2022 Legends Autograph Capsule",
+  "Antwerp 2022 Legends Sticker Capsule",
+  "Paris 2023 Challengers Autograph Capsule",
+  "Paris 2023 Challengers Sticker Capsule",
+  "Paris 2023 Champions Autograph Capsule",
+  "Paris 2023 Contenders Autograph Capsule",
+  "Paris 2023 Contenders Sticker Capsule",
+  "Paris 2023 Legends Autograph Capsule",
+  "Paris 2023 Legends Sticker Capsule",
+  "Sticker Capsule 2",
+  "Stockholm 2021 Challengers Sticker Capsule",
+  "Stockholm 2021 Champions Autograph Capsule",
+  "Stockholm 2021 Contenders Sticker Capsule",
+  "Stockholm 2021 Finalists Autograph Capsule",
+  "Stockholm 2021 Legends Patch Capsule",
+  "Stockholm 2021 Legends Sticker Capsule",
+];
+
 /**
  * Get Steam Community Market image URL for an item
  */
-export function getSteamImageUrl(itemName: string): string {
-  // Encode the item name for URL
-  const encoded = encodeURIComponent(itemName);
-
+export function getSteamImageUrl(_itemName: string): string {
   // Steam CDN image format
   // Note: This is a simplified approach. Real image URLs come from the market listings page
   return `https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot621FAR17PLfYQJD_9W7m5a0mvLwOq7c2GoFsZIk0r3D9Nr0mlG1-Us6azqgJo-VJA5sZVCB8wK3xuq515Xtv52YwSBnsyQi4X7D30vgn--Hggk/360fx360f`;
@@ -99,4 +119,14 @@ export function parsePriceToNumber(priceString: string): number {
 export function formatPrice(cents: number): string {
   const dollars = cents / 100;
   return `$${dollars.toFixed(2)}`;
+}
+
+/**
+ * Get display name by removing "Case" or "Capsule" suffix
+ */
+export function getDisplayName(itemName: string): string {
+  return itemName
+    .replace(/\s+Case$/i, "")
+    .replace(/\s+Capsule$/i, "")
+    .trim();
 }

@@ -1,75 +1,114 @@
-import { PortfolioItem } from "@/types";
+import { PortfolioData } from "@/types";
 
 const PORTFOLIO_KEY = "cs2-portfolio";
 
 /**
- * Load portfolio from localStorage
+ * Get default empty portfolio structure
  */
-export function loadPortfolio(): PortfolioItem[] {
-  if (typeof window === "undefined") return [];
+function getDefaultPortfolio(): PortfolioData {
+  return {
+    items: {},
+    prices: {},
+    meta: {
+      lastPriceUpdate: null,
+    },
+  };
+}
+
+/**
+ * Load portfolio data from localStorage
+ */
+export function loadPortfolioData(): PortfolioData {
+  if (typeof window === "undefined") return getDefaultPortfolio();
 
   try {
     const data = localStorage.getItem(PORTFOLIO_KEY);
-    if (!data) return [];
+    if (!data) return getDefaultPortfolio();
 
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    // Ensure structure is correct
+    return {
+      items: parsed.items || {},
+      prices: parsed.prices || {},
+      meta: parsed.meta || { lastPriceUpdate: null },
+    };
   } catch (error) {
     console.error("Error loading portfolio:", error);
-    return [];
+    return getDefaultPortfolio();
   }
 }
 
 /**
- * Save portfolio to localStorage
+ * Save portfolio data to localStorage
  */
-export function savePortfolio(portfolio: PortfolioItem[]): void {
+export function savePortfolioData(data: PortfolioData): void {
   if (typeof window === "undefined") return;
 
   try {
-    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(portfolio));
+    localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(data));
   } catch (error) {
     console.error("Error saving portfolio:", error);
   }
 }
 
 /**
- * Add or update item in portfolio
+ * Add or update item quantity in portfolio
  */
-export function updatePortfolioItem(
-  portfolio: PortfolioItem[],
+export function updateItemQuantity(
+  data: PortfolioData,
   name: string,
-  quantity: number,
-  price: number,
-  priceString: string
-): PortfolioItem[] {
-  const existingIndex = portfolio.findIndex((item) => item.name === name);
-
-  if (existingIndex >= 0) {
-    // Update existing item
-    const updated = [...portfolio];
-    updated[existingIndex] = { name, quantity, price, priceString };
-    return updated;
-  } else {
-    // Add new item
-    return [...portfolio, { name, quantity, price, priceString }];
-  }
+  quantity: number
+): PortfolioData {
+  return {
+    ...data,
+    items: {
+      ...data.items,
+      [name]: { quantity },
+    },
+  };
 }
 
 /**
  * Remove item from portfolio
  */
-export function removePortfolioItem(
-  portfolio: PortfolioItem[],
-  name: string
-): PortfolioItem[] {
-  return portfolio.filter((item) => item.name !== name);
+export function removeItem(data: PortfolioData, name: string): PortfolioData {
+  const newItems = { ...data.items };
+  delete newItems[name];
+
+  return {
+    ...data,
+    items: newItems,
+  };
+}
+
+/**
+ * Update prices for multiple items
+ */
+export function updatePrices(
+  data: PortfolioData,
+  prices: Record<string, number>
+): PortfolioData {
+  return {
+    ...data,
+    prices: {
+      ...data.prices,
+      ...prices,
+    },
+    meta: {
+      ...data.meta,
+      lastPriceUpdate: Date.now(),
+    },
+  };
 }
 
 /**
  * Calculate total portfolio value
  */
-export function calculateTotalValue(portfolio: PortfolioItem[]): number {
-  return portfolio.reduce((total, item) => {
-    return total + item.price * item.quantity;
-  }, 0);
+export function calculateTotalValue(data: PortfolioData): number {
+  let total = 0;
+  for (const [itemName, { quantity }] of Object.entries(data.items)) {
+    const price = data.prices[itemName] || 0;
+    total += price * quantity;
+  }
+  return total;
 }

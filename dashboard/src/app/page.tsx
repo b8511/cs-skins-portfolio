@@ -1,88 +1,94 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import CaseCard from "@/components/CaseCard";
 import PortfolioList from "@/components/PortfolioList";
-import { CaseItem, PortfolioItem } from "@/types";
-import { CSGO_CASES, parsePriceToNumber } from "@/lib/steamApi";
+import { CaseItem, PortfolioData, PortfolioItem } from "@/types";
 import {
-  loadPortfolio,
-  savePortfolio,
-  updatePortfolioItem,
-  removePortfolioItem,
+  CSGO_CASES,
+  CSGO_CAPSULES,
+  parsePriceToNumber,
+  formatPrice,
+} from "@/lib/steamApi";
+import {
+  loadPortfolioData,
+  savePortfolioData,
+  updateItemQuantity,
+  removeItem,
+  updatePrices,
 } from "@/lib/storage";
 
 export default function Home() {
   const [cases, setCases] = useState<CaseItem[]>([]);
-  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData>(() =>
+    loadPortfolioData()
+  );
+  const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
+  const [itemTypeFilter, setItemTypeFilter] = useState<
+    "all" | "case" | "capsule"
+  >("all");
+  const [progress, setProgress] = useState(0);
 
-  // Load portfolio from localStorage on mount
-  useEffect(() => {
-    const saved = loadPortfolio();
-    setPortfolio(saved);
-  }, []);
+  // Fetch prices for all cases and capsules
+  const fetchPrices = useCallback(async () => {
+    setLoading(true);
+    setProgress(0);
+    const caseData: CaseItem[] = [];
+    const newPrices: Record<string, number> = {};
+    const allItems = [...CSGO_CASES, ...CSGO_CAPSULES];
+    const totalItems = allItems.length;
 
-  // Fetch prices for all cases
-  useEffect(() => {
-    async function fetchPrices() {
-      setLoading(true);
-      const caseData: CaseItem[] = [];
+    for (let i = 0; i < allItems.length; i++) {
+      const itemName = allItems[i];
+      const itemType = i < CSGO_CASES.length ? "case" : "capsule";
 
-      for (const caseName of CSGO_CASES) {
-        try {
-          const response = await fetch(
-            `/api/prices?item=${encodeURIComponent(caseName)}`
-          );
-          const data = await response.json();
+      try {
+        const response = await fetch(
+          `/api/prices?item=${encodeURIComponent(itemName)}`
+        );
+        const data = await response.json();
 
-          if (data.success) {
-            caseData.push({
-              name: caseName,
-              lowest_price: data.lowest_price,
-              median_price: data.median_price,
-              volume: data.volume,
-            });
-          } else {
-            caseData.push({ name: caseName });
+        if (data.success) {
+          caseData.push({
+            name: itemName,
+            lowest_price: data.lowest_price,
+            median_price: data.median_price,
+            volume: data.volume,
+            type: itemType,
+          });
+
+          // Store price
+          if (data.median_price) {
+            newPrices[itemName] = parsePriceToNumber(data.median_price);
           }
-
-          // Add delay to respect rate limits
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } catch (error) {
-          console.error(`Error fetching ${caseName}:`, error);
-          caseData.push({ name: caseName });
+        } else {
+          caseData.push({ name: itemName, type: itemType });
         }
-      }
 
-      setCases(caseData);
-      setLoading(false);
+        // Update progress
+        setProgress(Math.round(((i + 1) / totalItems) * 100));
+
+        // Add delay to respect rate limits
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`Error fetching ${itemName}:`, error);
+        caseData.push({ name: itemName, type: itemType });
+      }
     }
 
-    fetchPrices();
-  }, []);
+    setCases(caseData);
 
-  // Update prices for portfolio items
-  useEffect(() => {
-    if (portfolio.length === 0 || cases.length === 0) return;
-
-    const updatedPortfolio = portfolio.map((item) => {
-      const caseItem = cases.find((c) => c.name === item.name);
-      if (caseItem && caseItem.median_price) {
-        const newPrice = parsePriceToNumber(caseItem.median_price);
-        return {
-          ...item,
-          price: newPrice,
-          priceString: caseItem.median_price,
-        };
-      }
-      return item;
+    // Update portfolio with new prices
+    setPortfolioData((prev) => {
+      const updated = updatePrices(prev, newPrices);
+      savePortfolioData(updated);
+      return updated;
     });
 
-    setPortfolio(updatedPortfolio);
-    savePortfolio(updatedPortfolio);
-  }, [cases]);
+    setLoading(false);
+    setProgress(0);
+  }, []);
 
   const handleAddToPortfolio = useCallback(
     (name: string, quantity: number) => {
@@ -90,51 +96,55 @@ export default function Home() {
       if (!caseItem || !caseItem.median_price) return;
 
       const price = parsePriceToNumber(caseItem.median_price);
-      const updated = updatePortfolioItem(
-        portfolio,
-        name,
-        quantity,
-        price,
-        caseItem.median_price
-      );
 
-      setPortfolio(updated);
-      savePortfolio(updated);
+      setPortfolioData((prev) => {
+        // Add item quantity
+        let updated = updateItemQuantity(prev, name, quantity);
+        // Update price
+        updated = updatePrices(updated, { [name]: price });
+        savePortfolioData(updated);
+        return updated;
+      });
     },
-    [cases, portfolio]
+    [cases]
   );
 
-  const handleUpdateQuantity = useCallback(
-    (name: string, quantity: number) => {
-      const item = portfolio.find((p) => p.name === name);
-      if (!item) return;
+  const handleUpdateQuantity = useCallback((name: string, quantity: number) => {
+    setPortfolioData((prev) => {
+      const updated = updateItemQuantity(prev, name, quantity);
+      savePortfolioData(updated);
+      return updated;
+    });
+  }, []);
 
-      const updated = updatePortfolioItem(
-        portfolio,
-        name,
-        quantity,
-        item.price,
-        item.priceString
-      );
+  const handleRemove = useCallback((name: string) => {
+    setPortfolioData((prev) => {
+      const updated = removeItem(prev, name);
+      savePortfolioData(updated);
+      return updated;
+    });
+  }, []);
 
-      setPortfolio(updated);
-      savePortfolio(updated);
-    },
-    [portfolio]
-  );
+  // Convert portfolio data to array format for display
+  const portfolioItems: PortfolioItem[] = Object.entries(
+    portfolioData.items
+  ).map(([name, { quantity }]) => ({
+    name,
+    quantity,
+    price: portfolioData.prices[name] || 0,
+    priceString: formatPrice(portfolioData.prices[name] || 0),
+  }));
 
-  const handleRemove = useCallback(
-    (name: string) => {
-      const updated = removePortfolioItem(portfolio, name);
-      setPortfolio(updated);
-      savePortfolio(updated);
-    },
-    [portfolio]
-  );
+  const filteredCases = cases.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(filter.toLowerCase());
+    const matchesType = itemTypeFilter === "all" || c.type === itemTypeFilter;
+    return matchesSearch && matchesType;
+  });
 
-  const filteredCases = cases.filter((c) =>
-    c.name.toLowerCase().includes(filter.toLowerCase())
-  );
+  // Format last update time
+  const lastUpdateText = portfolioData.meta.lastPriceUpdate
+    ? new Date(portfolioData.meta.lastPriceUpdate).toLocaleString()
+    : "Never";
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
@@ -152,31 +162,99 @@ export default function Home() {
         <section className="mb-12">
           <h2 className="text-3xl font-bold mb-6">Your Portfolio</h2>
           <PortfolioList
-            portfolio={portfolio}
+            portfolio={portfolioItems}
             onUpdateQuantity={handleUpdateQuantity}
             onRemove={handleRemove}
           />
         </section>
 
-        {/* Cases Section */}
+        {/* Cases & Capsules Section */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold">Available Cases</h2>
-            <input
-              type="text"
-              placeholder="Search cases..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-white"
-            />
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-3xl font-bold">Available Items</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Last updated: {lastUpdateText}
+              </p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-blue-500 text-white"
+              />
+              <button
+                onClick={fetchPrices}
+                disabled={loading}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+              >
+                {loading ? "Fetching..." : "Update Prices"}
+              </button>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-              <p className="mt-4 text-gray-400">Loading prices from Steam...</p>
-              <p className="text-sm text-gray-500 mt-2">
-                This may take a minute
+          {/* Filter Tabs */}
+          <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setItemTypeFilter("all")}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                itemTypeFilter === "all"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              All ({cases.length})
+            </button>
+            <button
+              onClick={() => setItemTypeFilter("case")}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                itemTypeFilter === "case"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              📦 Cases ({cases.filter((c) => c.type === "case").length})
+            </button>
+            <button
+              onClick={() => setItemTypeFilter("capsule")}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                itemTypeFilter === "capsule"
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              🎯 Capsules ({cases.filter((c) => c.type === "capsule").length})
+            </button>
+          </div>
+
+          {loading && (
+            <div className="mb-6">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">
+                    Loading prices from Steam...
+                  </span>
+                  <span className="text-sm font-semibold text-blue-400">
+                    {progress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cases.length === 0 && !loading ? (
+            <div className="text-center py-12 bg-gray-800 rounded-lg border border-gray-700">
+              <div className="text-6xl mb-4">🎮</div>
+              <p className="text-gray-400 text-lg mb-4">
+                Click &quot;Update Prices&quot; to load case data
               </p>
             </div>
           ) : (
@@ -186,9 +264,7 @@ export default function Home() {
                   key={caseItem.name}
                   caseItem={caseItem}
                   onAddToPortfolio={handleAddToPortfolio}
-                  isInPortfolio={portfolio.some(
-                    (p) => p.name === caseItem.name
-                  )}
+                  isInPortfolio={caseItem.name in portfolioData.items}
                 />
               ))}
             </div>

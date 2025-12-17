@@ -1,6 +1,7 @@
 "use client";
 
 import { CaseItem } from "@/types";
+import { getDisplayName } from "@/lib/steamApi";
 import { useState } from "react";
 
 interface CaseCardProps {
@@ -24,13 +25,26 @@ export default function CaseCard({
     }
   };
 
+  const itemIcon = caseItem.type === "capsule" ? "🎯" : "📦";
+  const gradientColor =
+    caseItem.type === "capsule"
+      ? "from-purple-700 to-purple-900"
+      : "from-gray-700 to-gray-900";
+
   return (
     <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 border border-gray-700">
-      <div className="relative h-48 bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
-        <div className="text-6xl opacity-20">📦</div>
+      <div
+        className={`relative h-48 bg-gradient-to-br ${gradientColor} flex items-center justify-center`}
+      >
+        <div className="text-6xl opacity-20">{itemIcon}</div>
         {isInPortfolio && (
           <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
             In Portfolio
+          </div>
+        )}
+        {caseItem.type === "capsule" && (
+          <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded-full text-xs font-semibold">
+            Capsule
           </div>
         )}
       </div>
@@ -40,7 +54,7 @@ export default function CaseCard({
           className="font-semibold text-white text-sm mb-2 truncate"
           title={caseItem.name}
         >
-          {caseItem.name}
+          {getDisplayName(caseItem.name)}
         </h3>
 
         <div className="space-y-2 mb-4">

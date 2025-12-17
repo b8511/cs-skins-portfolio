@@ -4,13 +4,22 @@ export interface CaseItem {
   lowest_price?: string;
   median_price?: string;
   volume?: string;
+  type?: "case" | "capsule";
 }
 
 export interface PortfolioItem {
   name: string;
   quantity: number;
-  price: number; // Store price in cents/numeric format
-  priceString: string; // Display format like "$1.50"
+  price: number;
+  priceString: string;
+}
+
+export interface PortfolioData {
+  items: Record<string, { quantity: number }>;
+  prices: Record<string, number>;
+  meta: {
+    lastPriceUpdate: number | null;
+  };
 }
 
 export interface PriceInfo {
